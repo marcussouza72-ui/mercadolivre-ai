@@ -1,21 +1,20 @@
 from fastapi import FastAPI
 
+from app.core.config import settings
+from app.routers.health import router as health_router
+
 app = FastAPI(
-    title="Mercado Livre AI Integration",
-    description="API para integração com Mercado Livre e IA",
-    version="1.0.0"
+    title=settings.APP_NAME,
+    debug=settings.DEBUG,
 )
 
+app.include_router(health_router)
+
+
 @app.get("/")
-async def root():
+def root():
     return {
         "status": "online",
-        "application": "Mercado Livre AI Integration",
-        "version": "1.0.0"
-    }
-
-@app.get("/health")
-async def health():
-    return {
-        "status": "healthy"
+        "application": settings.APP_NAME,
+        "environment": settings.APP_ENV,
     }
