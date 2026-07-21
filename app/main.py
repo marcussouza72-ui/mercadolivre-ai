@@ -7,7 +7,7 @@ from app.routers.health import router as health_router
 from app.api.v1.routers.mercadolivre import router as mercadolivre_router
 
 app = FastAPI(
-    title=settings.APP_NAME,
+    title="MERCADO LIVRE AI - TESTE 999",
     debug=settings.DEBUG,
 )
 
