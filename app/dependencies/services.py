@@ -1,0 +1,11 @@
+from fastapi import Depends
+
+from app.dependencies.repositories import get_user_repository
+from app.repositories.user_repository import UserRepository
+from app.services.user_service import UserService
+
+
+def get_user_service(
+    repository: UserRepository = Depends(get_user_repository),
+) -> UserService:
+    return UserService(repository)

@@ -1,20 +1,29 @@
-from app.database.connection import Base, engine
 from fastapi import FastAPI
 
 from app.core.config import settings
+from app.exceptions.handlers import register_exception_handlers
+from app.routers.auth import router as auth_router
 from app.routers.health import router as health_router
+from app.api.v1.routers.mercadolivre import router as mercadolivre_router
 
-import app.models
-Base.metadata.create_all(bind=engine)
 app = FastAPI(
     title=settings.APP_NAME,
     debug=settings.DEBUG,
 )
 
+register_exception_handlers(app)
+
+# Routers
 app.include_router(health_router)
+app.include_router(auth_router)
+app.include_router(mercadolivre_router)
 
 
-@app.get("/")
+@app.get(
+    "/",
+    summary="Status da aplicação",
+    tags=["System"],
+)
 def root():
     return {
         "status": "online",
