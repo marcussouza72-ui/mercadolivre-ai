@@ -61,7 +61,7 @@ class MLAccount(BaseModel):
     )
 
     scope: Mapped[str] = mapped_column(
-        String(255),
+        Text,
         nullable=False,
     )
 
