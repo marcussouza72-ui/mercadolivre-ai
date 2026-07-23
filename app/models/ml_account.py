@@ -3,20 +3,16 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import BaseModel
 
 if TYPE_CHECKING:
+    from app.models.ml_item import MLItem
     from app.models.user import User
 
-items = relationship(
-    "MLItem",
-    back_populates="account",
-    cascade="all, delete-orphan",
-)
 
 class MLAccount(BaseModel):
     """
@@ -32,6 +28,7 @@ class MLAccount(BaseModel):
     )
 
     ml_user_id: Mapped[int] = mapped_column(
+        BigInteger,
         unique=True,
         index=True,
         nullable=False,
@@ -83,4 +80,10 @@ class MLAccount(BaseModel):
 
     user: Mapped["User"] = relationship(
         back_populates="ml_accounts",
+    )
+
+    items: Mapped[list["MLItem"]] = relationship(
+        "MLItem",
+        back_populates="account",
+        cascade="all, delete-orphan",
     )
