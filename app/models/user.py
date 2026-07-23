@@ -9,6 +9,7 @@ from app.models.base import BaseModel
 
 if TYPE_CHECKING:
     from app.models.ml_account import MLAccount
+    from app.models.oauth_state import OAuthState
 
 
 class User(BaseModel):
@@ -52,6 +53,11 @@ class User(BaseModel):
     )
 
     ml_accounts: Mapped[list["MLAccount"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+
+    oauth_states: Mapped[list["OAuthState"]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan",
     )

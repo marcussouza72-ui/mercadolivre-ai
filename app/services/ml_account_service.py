@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from app.core.exceptions import MLAccountAlreadyLinkedError
 from app.models.ml_account import MLAccount
 from app.repositories.ml_account_repository import MLAccountRepository
 from app.schemas.ml_account import (
@@ -111,8 +112,6 @@ class MLAccountService:
 
         if data.is_active is not None:
             account.is_active = data.is_active
-        else:
-            account.is_active = True
 
         return await self._repository.update(account)
 
@@ -158,20 +157,38 @@ class MLAccountService:
         update_data: MLAccountUpdate,
     ) -> MLAccount:
         """
-        Cria uma conta caso ela não exista ou atualiza seus
-        tokens caso já exista.
+        Cria uma conta caso ela não exista.
+
+        Caso já exista:
+
+        - atualiza os tokens se pertencer ao mesmo usuário;
+        - impede que outro usuário conecte a mesma conta.
         """
 
         account = await self.get_by_ml_user_id(
             create_data.ml_user_id,
         )
 
+        #
+        # Conta ainda não existe
+        #
         if account is None:
             return await self.create(
                 user_id=user_id,
                 data=create_data,
             )
 
+        #
+        # Conta pertence a outro usuário
+        #
+        if account.user_id != user_id:
+            raise MLAccountAlreadyLinkedError(
+                "Esta conta do Mercado Livre já está vinculada a outro usuário."
+            )
+
+        #
+        # Conta pertence ao mesmo usuário
+        #
         return await self.update_tokens(
             account=account,
             data=update_data,

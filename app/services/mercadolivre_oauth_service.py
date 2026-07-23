@@ -19,6 +19,7 @@ class MercadoLivreOAuthService:
 
     Responsabilidades:
 
+    - gerar URL de autorização;
     - trocar authorization_code por access_token;
     - obter os dados da conta (/users/me);
     - calcular expires_at;
@@ -38,6 +39,18 @@ class MercadoLivreOAuthService:
         self._token_manager = token_manager
         self._account_service = account_service
 
+    def build_authorization_url(
+        self,
+        *,
+        state: str,
+    ) -> str:
+        """
+        Gera a URL de autorização OAuth.
+        """
+        return self._oauth.authorization_url(
+            state=state,
+        )
+
     async def connect_account(
         self,
         *,
@@ -45,30 +58,32 @@ class MercadoLivreOAuthService:
         code: str,
     ) -> MLAccount:
         """
-        Conecta uma conta Mercado Livre ao usuário da aplicação.
+        Conecta uma conta Mercado Livre ao usuário.
         """
 
         #
-        # 1 - troca o authorization_code pelo token
+        # 1 - troca o authorization_code
         #
-        token = await self._oauth.exchange_code(code)
+        token = await self._oauth.exchange_code(
+            code,
+        )
 
         #
-        # 2 - obtém os dados da conta Mercado Livre
+        # 2 - obtém dados da conta
         #
         ml_user = await self._oauth.get_current_user(
             token["access_token"],
         )
 
         #
-        # 3 - calcula a data de expiração
+        # 3 - calcula expiração
         #
         expires_at: datetime = self._token_manager.expires_at(
             token["expires_in"],
         )
 
         #
-        # 4 - schema de criação
+        # 4 - schema criação
         #
         create_data = MLAccountCreate(
             ml_user_id=ml_user["id"],
@@ -83,7 +98,7 @@ class MercadoLivreOAuthService:
         )
 
         #
-        # 5 - schema de atualização
+        # 5 - schema atualização
         #
         update_data = MLAccountUpdate(
             access_token=token["access_token"],
@@ -95,12 +110,10 @@ class MercadoLivreOAuthService:
         )
 
         #
-        # 6 - persiste a conta
+        # 6 - persiste conta
         #
-        account = await self._account_service.upsert(
+        return await self._account_service.upsert(
             user_id=user_id,
             create_data=create_data,
             update_data=update_data,
         )
-
-        return account

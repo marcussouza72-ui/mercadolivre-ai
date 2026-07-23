@@ -6,7 +6,8 @@ from alembic import context
 
 from app.core.config import settings
 from app.models.base import Base
-from app.models.ml_account import MLAccount  # NOVO
+from app.models.ml_account import MLAccount
+from app.models.oauth_state import OAuthState
 from app.models.user import User
 
 config = context.config

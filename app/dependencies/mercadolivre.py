@@ -5,79 +5,115 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.database.connection import get_db
+
 from app.integrations.mercadolivre.api import MercadoLivreAPI
 from app.integrations.mercadolivre.client import MercadoLivreClient
 from app.integrations.mercadolivre.oauth import MercadoLivreOAuth
 from app.integrations.mercadolivre.token_manager import TokenManager
+
 from app.repositories.ml_account_repository import MLAccountRepository
+from app.repositories.oauth_state_repository import OAuthStateRepository
+
 from app.services.ml_account_service import MLAccountService
+from app.services.oauth_state_service import OAuthStateService
 from app.services.mercadolivre_oauth_service import MercadoLivreOAuthService
 
+
 def get_ml_client() -> MercadoLivreClient:
+    """
+    Cliente HTTP utilizado pela integração Mercado Livre.
+    """
     return MercadoLivreClient(
         base_url=settings.MELI_API_URL,
         timeout=settings.MELI_REQUEST_TIMEOUT,
     )
 
+
 def get_ml_oauth(
     client: MercadoLivreClient = Depends(get_ml_client),
 ) -> MercadoLivreOAuth:
     """
-    Serviço responsável pelo fluxo OAuth do Mercado Livre.
+    Serviço responsável pelas operações do protocolo OAuth.
     """
     return MercadoLivreOAuth(
         client=client,
     )
 
+
 def get_ml_token_manager(
     oauth: MercadoLivreOAuth = Depends(get_ml_oauth),
 ) -> TokenManager:
     """
-    Gerenciador responsável por validar e renovar tokens.
+    Responsável pelo cálculo de expiração e renovação de tokens.
     """
     return TokenManager(
         oauth=oauth,
     )
 
+
+# ----------------------------------------------------------------------
+# OAuth State
+# ----------------------------------------------------------------------
+
+
+def get_oauth_state_repository(
+    db: AsyncSession = Depends(get_db),
+) -> OAuthStateRepository:
+    """
+    Repositório responsável pelos OAuth States.
+    """
+    return OAuthStateRepository(
+        session=db,
+    )
+
+
+def get_oauth_state_service(
+    repository: OAuthStateRepository = Depends(
+        get_oauth_state_repository,
+    ),
+) -> OAuthStateService:
+    """
+    Regras de negócio dos OAuth States.
+    """
+    return OAuthStateService(
+        repository=repository,
+    )
+
+
+# ----------------------------------------------------------------------
+# Mercado Livre Accounts
+# ----------------------------------------------------------------------
+
+
 def get_ml_repository(
     db: AsyncSession = Depends(get_db),
 ) -> MLAccountRepository:
     """
-    Fornece o repositório das contas Mercado Livre.
+    Repositório das contas Mercado Livre.
     """
-    return MLAccountRepository(db)
+    return MLAccountRepository(
+        session=db,
+    )
+
 
 def get_ml_service(
-    repository: MLAccountRepository = Depends(get_ml_repository),
+    repository: MLAccountRepository = Depends(
+        get_ml_repository,
+    ),
 ) -> MLAccountService:
     """
-    Fornece o serviço responsável pelas regras de negócio
+    Serviço responsável pelas regras de negócio
     das contas Mercado Livre.
     """
     return MLAccountService(
         repository=repository,
     )
 
-def get_ml_api(
-    client: MercadoLivreClient = Depends(get_ml_client),
-    token_manager: TokenManager = Depends(get_ml_token_manager),
-    account_service: MLAccountService = Depends(get_ml_service),
-) -> MercadoLivreAPI:
-    """
-    Fachada da API do Mercado Livre.
 
-    Responsável por:
+# ----------------------------------------------------------------------
+# OAuth Orchestrator
+# ----------------------------------------------------------------------
 
-    - validar tokens;
-    - renovar tokens expirados;
-    - persistir novos tokens;
-    - executar chamadas autenticadas.
-    """
-    return MercadoLivreAPI(
-        client=client,
-        token_manager=token_manager,
-        account_service=account_service,
-    )
 
 def get_ml_oauth_service(
     oauth: MercadoLivreOAuth = Depends(get_ml_oauth),
@@ -85,11 +121,31 @@ def get_ml_oauth_service(
     account_service: MLAccountService = Depends(get_ml_service),
 ) -> MercadoLivreOAuthService:
     """
-    Serviço responsável por orquestrar todo o fluxo OAuth
-    do Mercado Livre.
+    Orquestra todo o fluxo OAuth do Mercado Livre.
     """
     return MercadoLivreOAuthService(
         oauth=oauth,
+        token_manager=token_manager,
+        account_service=account_service,
+    )
+
+
+# ----------------------------------------------------------------------
+# Mercado Livre API
+# ----------------------------------------------------------------------
+
+
+def get_ml_api(
+    client: MercadoLivreClient = Depends(get_ml_client),
+    token_manager: TokenManager = Depends(get_ml_token_manager),
+    account_service: MLAccountService = Depends(get_ml_service),
+) -> MercadoLivreAPI:
+    """
+    Fachada responsável pelas chamadas autenticadas
+    à API do Mercado Livre.
+    """
+    return MercadoLivreAPI(
+        client=client,
         token_manager=token_manager,
         account_service=account_service,
     )
